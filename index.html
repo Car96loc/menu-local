@@ -4,13 +4,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Menú de Productos</title>
+  <title>Menú del Local</title>
   <style>
     body {
       font-family: sans-serif;
-      background-color: #f4f4f4;
-      color: #333;
       padding: 20px;
+      background-color: #121212;
+      color: #ffffff;
       max-width: 600px;
       margin: auto;
     }
@@ -18,108 +18,127 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background-color: #fff;
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      border-bottom: 1px solid #444;
+      padding: 10px 0;
     }
     .producto input[type="checkbox"] {
-      transform: scale(1.2);
-    }
-    .producto-nombre {
-      flex: 1;
+      transform: scale(1.5);
     }
     .total {
-      font-weight: bold;
-      margin-top: 20px;
       font-size: 18px;
-    }
-    .whatsapp-btn {
       margin-top: 20px;
-      background-color: #25D366;
-      color: white;
-      padding: 15px;
-      width: 100%;
-      text-align: center;
+      font-weight: bold;
+    }
+    select, button {
+      padding: 10px;
       font-size: 16px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+      background-color: #1e1e1e;
+      color: #fff;
+      border: 1px solid #444;
+    }
+    .banco-info {
+      margin-top: 10px;
+      background-color: #1e1e1e;
+      padding: 10px;
+      border-radius: 8px;
+      display: none;
     }
   </style>
 </head>
 <body>
-
-  <h2>Menú</h2>
-
-  <div class="producto">
-    <label class="producto-nombre">
-      <input type="checkbox" value="2" onchange="actualizarTotal()"> Seco de Pollo
-    </label>
-    <span>$2.00</span>
-  </div>
-
-  <div class="producto">
-    <label class="producto-nombre">
-      <input type="checkbox" value="2.5" onchange="actualizarTotal()"> Seco de Gallina
-    </label>
-    <span>$2.50</span>
-  </div>
-
-  <div class="producto">
-    <label class="producto-nombre">
-      <input type="checkbox" value="2.25" onchange="actualizarTotal()"> Arroz con Pollo
-    </label>
-    <span>$2.25</span>
-  </div>
-
-  <div class="producto">
-    <label class="producto-nombre">
-      <input type="checkbox" value="2.75" onchange="actualizarTotal()"> Seco de Carne
-    </label>
-    <span>$2.75</span>
-  </div>
+  <h2>Menú del Local</h2>
+  <div id="menu"></div>
 
   <div class="total" id="total">Total: $0.00</div>
 
-  <button class="whatsapp-btn" onclick="enviarWhatsApp()">Hacer pedido por WhatsApp</button>
+  <label for="pago">Método de pago:</label>
+  <select id="pago" onchange="mostrarBanco()">
+    <option value="Efectivo">Efectivo</option>
+    <option value="Pichincha">Transferencia - Banco Pichincha</option>
+    <option value="Guayaquil">Transferencia - Banco Guayaquil</option>
+  </select>
+
+  <div class="banco-info" id="infoPichincha">
+    <strong>Banco Pichincha</strong><br/>
+    Nombre: Pedro Pérez<br/>
+    Cuenta: 1234567890<br/>
+    Tipo: Ahorros
+  </div>
+
+  <div class="banco-info" id="infoGuayaquil">
+    <strong>Banco Guayaquil</strong><br/>
+    Nombre: Pedro Pérez<br/>
+    Cuenta: 0987654321<br/>
+    Tipo: Ahorros
+  </div>
+
+  <button onclick="enviarPedido()">Enviar por WhatsApp</button>
 
   <script>
-    // Obtener número de mesa desde la URL
-    const params = new URLSearchParams(window.location.search);
-    const mesa = params.get("mesa") || "Sin especificar";
+    const productos = [
+      { nombre: "Seco de Pollo", precio: 2.00 },
+      { nombre: "Seco de Gallina", precio: 2.50 },
+      { nombre: "Arroz con Pollo", precio: 2.00 },
+      { nombre: "Seco de Carne", precio: 3.00 }
+    ];
 
-    function actualizarTotal() {
-      let checkboxes = document.querySelectorAll('input[type="checkbox"]');
-      let total = 0;
-      checkboxes.forEach(c => {
-        if (c.checked) total += parseFloat(c.value);
+    const menuDiv = document.getElementById("menu");
+    const totalSpan = document.getElementById("total");
+
+    function cargarMenu() {
+      productos.forEach((producto, i) => {
+        const div = document.createElement("div");
+        div.className = "producto";
+        div.innerHTML = `
+          <label>
+            <input type="checkbox" data-precio="${producto.precio}" onchange="calcularTotal()" />
+            ${producto.nombre} - $${producto.precio.toFixed(2)}
+          </label>
+        `;
+        menuDiv.appendChild(div);
       });
-      document.getElementById('total').innerText = 'Total: $' + total.toFixed(2);
     }
 
-    function enviarWhatsApp() {
-      let checkboxes = document.querySelectorAll('input[type="checkbox"]');
-      let mensaje = `Hola, quiero hacer el siguiente pedido desde la mesa ${mesa}:
-`;
+    function calcularTotal() {
       let total = 0;
+      document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        if (cb.checked) {
+          total += parseFloat(cb.getAttribute("data-precio"));
+        }
+      });
+      totalSpan.innerText = "Total: $" + total.toFixed(2);
+    }
 
-      checkboxes.forEach((c) => {
-        if (c.checked) {
-          let nombre = c.parentElement.textContent.trim();
-          let precio = parseFloat(c.value);
-          mensaje += `- ${nombre} ($${precio.toFixed(2)})
-`;
-          total += precio;
+    function mostrarBanco() {
+      const pago = document.getElementById("pago").value;
+      document.getElementById("infoPichincha").style.display = pago === "Pichincha" ? "block" : "none";
+      document.getElementById("infoGuayaquil").style.display = pago === "Guayaquil" ? "block" : "none";
+    }
+
+    function enviarPedido() {
+      let pedido = "Pedido:%0A";
+      let total = 0;
+      document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        if (cb.checked) {
+          const texto = cb.parentElement.textContent.trim();
+          pedido += "- " + texto + "%0A";
+          total += parseFloat(cb.getAttribute("data-precio"));
         }
       });
 
-      mensaje += `Total: $${total.toFixed(2)}`;
-      let numero = "593962210284";
-      let url = "https://wa.me/" + numero + "?text=" + encodeURIComponent(mensaje);
-      window.open(url, "_blank");
+      const metodo = document.getElementById("pago").value;
+      pedido += "Método de pago: " + metodo + "%0A";
+      pedido += "Total: $" + total.toFixed(2);
+
+      const mesa = new URLSearchParams(window.location.search).get("mesa") || "desconocida";
+      pedido += "%0AMesa: " + mesa;
+
+      window.open("https://wa.me/593962210284?text=" + pedido, "_blank");
     }
+
+    cargarMenu();
   </script>
 </body>
 </html>
