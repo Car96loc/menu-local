@@ -1,0 +1,125 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Menú de Productos</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f4f4f4;
+      color: #333;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    .producto {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #fff;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .producto input[type="checkbox"] {
+      transform: scale(1.2);
+    }
+    .producto-nombre {
+      flex: 1;
+    }
+    .total {
+      font-weight: bold;
+      margin-top: 20px;
+      font-size: 18px;
+    }
+    .whatsapp-btn {
+      margin-top: 20px;
+      background-color: #25D366;
+      color: white;
+      padding: 15px;
+      width: 100%;
+      text-align: center;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Menú</h2>
+
+  <div class="producto">
+    <label class="producto-nombre">
+      <input type="checkbox" value="2" onchange="actualizarTotal()"> Seco de Pollo
+    </label>
+    <span>$2.00</span>
+  </div>
+
+  <div class="producto">
+    <label class="producto-nombre">
+      <input type="checkbox" value="2.5" onchange="actualizarTotal()"> Seco de Gallina
+    </label>
+    <span>$2.50</span>
+  </div>
+
+  <div class="producto">
+    <label class="producto-nombre">
+      <input type="checkbox" value="2.25" onchange="actualizarTotal()"> Arroz con Pollo
+    </label>
+    <span>$2.25</span>
+  </div>
+
+  <div class="producto">
+    <label class="producto-nombre">
+      <input type="checkbox" value="2.75" onchange="actualizarTotal()"> Seco de Carne
+    </label>
+    <span>$2.75</span>
+  </div>
+
+  <div class="total" id="total">Total: $0.00</div>
+
+  <button class="whatsapp-btn" onclick="enviarWhatsApp()">Hacer pedido por WhatsApp</button>
+
+  <script>
+    // Obtener número de mesa desde la URL
+    const params = new URLSearchParams(window.location.search);
+    const mesa = params.get("mesa") || "Sin especificar";
+
+    function actualizarTotal() {
+      let checkboxes = document.querySelectorAll('input[type="checkbox"]');
+      let total = 0;
+      checkboxes.forEach(c => {
+        if (c.checked) total += parseFloat(c.value);
+      });
+      document.getElementById('total').innerText = 'Total: $' + total.toFixed(2);
+    }
+
+    function enviarWhatsApp() {
+      let checkboxes = document.querySelectorAll('input[type="checkbox"]');
+      let mensaje = `Hola, quiero hacer el siguiente pedido desde la mesa ${mesa}:
+`;
+      let total = 0;
+
+      checkboxes.forEach((c) => {
+        if (c.checked) {
+          let nombre = c.parentElement.textContent.trim();
+          let precio = parseFloat(c.value);
+          mensaje += `- ${nombre} ($${precio.toFixed(2)})
+`;
+          total += precio;
+        }
+      });
+
+      mensaje += `Total: $${total.toFixed(2)}`;
+      let numero = "593962210284";
+      let url = "https://wa.me/" + numero + "?text=" + encodeURIComponent(mensaje);
+      window.open(url, "_blank");
+    }
+  </script>
+</body>
+</html>
