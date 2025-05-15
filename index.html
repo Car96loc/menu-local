@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rifa</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #121212;
+      color: white;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 16px;
+      border: 1px solid #333;
+      border-radius: 5px;
+      background-color: #1e1e1e;
+      color: white;
+      box-sizing: border-box;
+    }
+    #adminPanel {
+      display: none;
+      margin-top: 30px;
+      border-top: 1px solid #444;
+      padding-top: 20px;
+    }
+    #userPanel {
+      display: block;
+    }
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    .registro {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 5px 0;
+    }
+    .registro button {
+      width: auto;
+      padding: 5px 10px;
+      background-color: #e53935;
+      border: none;
+      color: white;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .registro span {
+      flex-grow: 1;
+    }
+  </style>
+</head>
+<body>
+  <h2>Registro de Rifa</h2>
+
+  <div id="userPanel">
+    <p id="infoRifa"></p>
+    <input type="text" id="name" placeholder="Tu nombre" />
+    <select id="rifaNumber">
+      <option value="">Selecciona un número de rifa</option>
+    </select>
+    <button onclick="register()">Enviar a WhatsApp</button>
+    <input type="password" id="adminCode" placeholder="Código de administrador" />
+    <button onclick="checkAdmin()">Entrar como admin</button>
+  </div>
+
+  <div id="adminPanel">
+    <h3>Panel Administrador</h3>
+    <label>¿Qué se rifa?</label>
+    <input type="text" id="premio" />
+    <label>Valor por número:</label>
+    <input type="text" id="valor" />
+    <label>Total de números disponibles:</label>
+    <input type="number" id="totalNumeros" min="1" />
+    <button onclick="guardarInfoRifa()">Guardar datos de la rifa</button>
+
+    <h4>Registrados:</h4>
+    <ul id="registeredList"></ul>
+    <button onclick="downloadPDF()">Descargar PDF</button>
+    <input type="password" id="resetCode" placeholder="Código para resetear lista"/>
+    <button onclick="resetRegistrations()">Resetear lista</button>
+    <button onclick="salirAdmin()">Salir del panel</button>
+  </div>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyC2-AOofYgpkiToLSkG2NJXNSLZNvR0uMk",
+      authDomain: "rifas-eeaff.firebaseapp.com",
+      projectId: "rifas-eeaff",
+      storageBucket: "rifas-eeaff.firebasestorage.app",
+      messagingSenderId: "143103664512",
+      appId: "1:143103664512:web:5b4f680749d99f24dae165",
+      measurementId: "G-19B0BL7RLV"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+
+    // Funciones para guardar/leer datos localmente
+
+    function getRegistrations() {
+      return JSON.parse(localStorage.getItem("registrosRIFA") || "[]");
+    }
+
+    function saveRegistrations(registros) {
+      localStorage.setItem("registrosRIFA", JSON.stringify(registros));
+      actualizarNumerosDisponibles();
+    }
+
+    function saveRegistration(data) {
+      const registros = getRegistrations();
+      registros.push(data);
+      saveRegistrations(registros);
+    }
+
+    function getInfoRifa() {
+      return JSON.parse(localStorage.getItem("infoRIFA") || '{"premio":"Premio sorpresa","valor":"$0","totalNumeros":300}');
+    }
+
+    function guardarInfoRifa() {
+      const premio = document.getElementById("premio").value.trim();
+      const valor = document.getElementById("valor").value.trim();
+      let totalNumeros = parseInt(document.getElementById("totalNumeros").value);
+      if (!totalNumeros || totalNumeros < 1) totalNumeros = 300;
+
+      localStorage.setItem("infoRIFA", JSON.stringify({ premio, valor, totalNumeros }));
+      alert("Información guardada.");
+      mostrarInfoRifa();
+      actualizarNumerosDisponibles();
+    }
+
+    function mostrarInfoRifa() {
+      const info = getInfoRifa();
+      document.getElementById("infoRifa").textContent = `Rifa de: ${info.premio} | Valor: ${info.valor}`;
+    }
+
+    function cargarInfoRifa() {
+      const info = getInfoRifa();
+      document.getElementById("premio").value = info.premio;
+      document.getElementById("valor").value = info.valor;
+      document.getElementById("totalNumeros").value = info.totalNumeros || 300;
+    }
+
+    function actualizarNumerosDisponibles() {
+      const select = document.getElementById("rifaNumber");
+      const registros = getRegistrations();
+      const usados = registros.map(r => parseInt(r.numero));
+      const info = getInfoRifa();
+      const maxNum = info.totalNumeros || 300;
+
+      select.innerHTML = '<option value="">Selecciona un número de rifa</option>';
+      for (let i = 1; i <= maxNum; i++) {
+        if (!usados.includes(i)) {
+          const option = document.createElement("option");
+          option.value = i;
+          option.textContent = i;
+          select.appendChild(option);
+        }
+      }
+    }
+
+    function register() {
+      const name = document.getElementById("name").value.trim();
+      const number = document.getElementById("rifaNumber").value;
+      const info = getInfoRifa();
+
+      if (!name || !number) {
+        alert("Por favor, completa todos los campos.");
+        return;
+      }
+
+      const data = { nombre: name, numero: number, fecha: new Date().toLocaleString() };
+      saveRegistration(data);
+
+      const mensaje = `Hola, me registré para la rifa de "${info.premio}" con el número ${number}.\nMi nombre es ${name}. Valor: ${info.valor}`;
+      const telefonoDestino = "593962210284"; // tu número con código país (Ecuador: 593)
+      const url = `https://wa.me/${telefonoDestino}?text=${encodeURIComponent(mensaje)}`;
+      window.open(url, "_blank");
+
+      alert("Registro enviado por WhatsApp.");
+      document.getElementById("name").value = "";
+      document.getElementById("rifaNumber").value = "";
+    }
+
+    function checkAdmin() {
+      const code = document.getElementById("adminCode").value;
+      if (code === "9999") {
+        document.getElementById("adminPanel").style.display = "block";
+        document.getElementById("userPanel").style.display = "none";
+        document.getElementById("adminCode").value = "";
+        mostrarRegistros();
+        cargarInfoRifa();
+      } else {
+        alert("Código incorrecto.");
+      }
+    }
+
+    function mostrarRegistros() {
+      const lista = document.getElementById("registeredList");
+      const registros = getRegistrations();
+      lista.innerHTML = "";
+      registros.forEach((r, i) => {
+        const li = document.createElement("li");
+        li.className = "registro";
+        li.innerHTML = `<span>${i + 1}. ${r.nombre} - Número ${r.numero} (${r.fecha})</span>
+                          <button onclick="eliminarRegistro(${r.numero})">Eliminar</button>`;
+        lista.appendChild(li);
+      });
+    }
+
+    function eliminarRegistro(numero) {
+      let registros = getRegistrations();
+      registros = registros.filter(r => parseInt(r.numero) !== numero);
+      saveRegistrations(registros);
+      mostrarRegistros();
+    }
+
+    function salirAdmin() {
+      document.getElementById("adminPanel").style.display = "none";
+      document.getElementById("userPanel").style.display = "block";
+      mostrarInfoRifa();
+      actualizarNumerosDisponibles();
+    }
+
+    function downloadPDF() {
+      const registros = getRegistrations();
+      if (registros.length === 0) {
+        alert("No hay registros.");
+        return;
+      }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const info = getInfoRifa();
+      doc.setFontSize(12);
+      doc.text(`Lista de Registrados - Rifa de "${info.premio}" (${info.valor})`, 10, 10);
+      registros.forEach((r, i) => {
+        const text = `${i + 1}. ${r.nombre} - Número ${r.numero} (${r.fecha})`;
+        doc.text(text, 10, 20 + i * 8);
+      });
+      doc.save("registrados_rifa.pdf");
+    }
+
+    function resetRegistrations() {
+      const code = document.getElementById("resetCode").value;
+      if (code === "9999") {
+        localStorage.removeItem("registrosRIFA");
+        alert("Lista de registros reseteada.");
+        mostrarRegistros();
+        actualizarNumerosDisponibles();
+        document.getElementById("resetCode").value = "";
+      } else {
+        alert("Código incorrecto.");
+      }
+    }
+
+    // Inicialización
+    mostrarInfoRifa();
+    actualizarNumerosDisponibles();
+  </script>
+</body>
+</html>
